@@ -1,4 +1,8 @@
+#Hidden folders
+.*/
+
 #Media
+assets/
 *.png
 *.ttf
 
