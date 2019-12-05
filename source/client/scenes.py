@@ -58,7 +58,7 @@ class MainMenu(Scene):
 
         nameBox = glooey.HBox()
         nameLabel = Sublabel('Username:')
-        self.nameForm = Form('Revvy')
+        self.nameForm = Form('Player')
         #self.addForm.push_handlers(on_unfocus=self.get_text)
         nameBox.add(nameLabel)
         nameBox.add(self.nameForm)
@@ -79,7 +79,7 @@ class MainMenu(Scene):
 
         portBox = glooey.HBox()
         portLabel = Sublabel('Port:')
-        self.portForm = Form('45456')
+        self.portForm = Form('98765')
         #self.portForm.push_handlers(on_unfocus=self.get_text)
         portBox.add(portLabel)
         portBox.add(self.portForm)
