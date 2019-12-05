@@ -87,7 +87,7 @@ class World:
     def temp_grad(self, x, y):
         return 60 + (y / 16.0)
 
-    def gen_tile(self, x, y, tile, scale=WORLD_SCALE):
+    def gen_tile(self, x, y, scale=WORLD_SCALE):
         
         height = self.height_table.smooth_noise2(x, y, 5) - 2  # Base -2 - 3
 
@@ -212,6 +212,7 @@ class World:
                         elif mana > 0.5 and temp < 50:
                             block_item = ONXY
 
+        tile = Tile()
         tile.x = x
         tile.y = y
         tile.value = result
@@ -239,8 +240,7 @@ class World:
         if pos in self.chunks:
             tile = self.chunks[pos].get_tile(x, y)
         else:
-            tile = Tile()
-            self.gen_tile(x, y, tile)
+            tile = self.gen_tile(x, y)
 
         return tile
 
@@ -249,7 +249,7 @@ class World:
         del self.valid_chunks[pos]
 
     def make_chunk(self, x, y, scale):
-        print('World: Generating chunk at %s:%s (%s)' % (x, y, scale))
+        #print('World: Generating chunk at %s:%s (%s)' % (x, y, scale))
         pos = (x, y)
         chunk = Chunk(x, y)
         self.chunks[pos] = chunk
@@ -260,12 +260,11 @@ class World:
         y_max = y_min + CHUNK_SIZE
 
 
-        for x in range(x_min, x_max):
-            for y in range(y_min, y_max):
-                tile = self.gen_tile(x, y, scale)
-                chunk.set_tile(x, y, tile)
+        for xi in range(x_min, x_max):
+            for yi in range(y_min, y_max):
+                tile = self.gen_tile(xi, yi, scale)
+                chunk.set_tile(xi, yi, tile)
 
-        chunk.set_averages()
         self.visualize_chunk(chunk)
 
     def visualize_chunk(self, chunk):
@@ -422,9 +421,7 @@ class VisualWorld(World):
         if pos in self.tiles:
             tile = self.tiles[pos]
         else:
-            tile = Tile()
-
-            self.gen_tile(x, y, tile)
+            tile = self.gen_tile(x, y)
             self.tiles[pos] = tile
 
             tile.sprite = sprites.make_tile(x, y, tile.value)

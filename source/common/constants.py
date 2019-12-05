@@ -60,8 +60,8 @@ MSG_RATE = 1 #15
 ### World Constants ###
 WORLD_UPDATE_RATE = 1
 WORLD_SCALE = 10.0
-DRAW_DISTANCE_X = 25  # in tiles
-DRAW_DISTANCE_Y = 15  # in tiles
+DRAW_DISTANCE_X = 25  # in chunks
+DRAW_DISTANCE_Y = 15  # in chunks
 TILE_SIZE = 32  # Pixels
 CHUNK_SIZE = 16  # Tiles
 
