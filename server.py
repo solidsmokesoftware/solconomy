@@ -3,7 +3,7 @@ from source.common.network import Server
 
 
 game = Game()
-server = Server('localhost', 45460, game)
+server = Server('localhost', 65535, game)
 
 game.start()
 server.start()
