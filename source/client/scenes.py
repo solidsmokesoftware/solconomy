@@ -5,7 +5,6 @@ import pyglet
 class Manager:
     def __init__(self, game):
         self.game = game
-        self.visual = game.visual
         self.scenes = {}
 
     def load(self, scene):
@@ -16,12 +15,11 @@ class Manager:
     def add(self, scene):
         print('Adding %s' % scene.key)
         self.scenes[scene.key] = scene
-        if scene.items:
-            self.visual.gui.add(scene.items)
+        self.game.gui.add(scene.items)
 
     def remove(self, scene):
         print('Removing %s' % scene.key)
-        self.visual.gui.remove(scene.items)
+        self.game.gui.remove(scene.items)
         del self.scenes[scene.key]
 
 
@@ -36,6 +34,13 @@ class World(Scene):
     def __init__(self, manager):
         Scene.__init__(self, manager, 'World')
         #pyglet.clock.schedule_interval(self.send_input, 1/15.0)
+
+        self.items = glooey.VBox()
+        label = Label('World map')
+
+        self.items.add(label)
+
+        sublabel = Sublabel('')
 
     def send_input(self, delta):
         print('sending input')
@@ -98,7 +103,7 @@ class MainMenu(Scene):
 
         print('Main Menu: Attempting to join %s:%s' % (address, port))
         game = self.manager.game
-        game.network.set_host(address, port, username, password)
+        game.set_host(username, password, address, port)
 
         print('Main Menu: Starting server')
         game.start_connection()

@@ -1,59 +1,15 @@
-import pyglet
-import glooey
-
-import source.client.scenes as scenes
-import source.client.sprites as sprites
-from source.client.camera import Camera
-from source.client.events import EventHandler
-
 from source.common.constants import *
-from source.common.network import Client
-from source.common.sharedlist import SharedList
-from source.common.players import Player
-from source.common.base import Selection
-from source.common.actors import VisualActor
-from source.common.world import VisualWorld
 
+class ClientInput:
+    def __init__(self, system):
+        self.system = system
 
-window = pyglet.window.Window(WINDOW_SIZE_X, WINDOW_SIZE_Y)
+        self.network = system.network
+        self.input_channel = system.input_channel
+        self.output_channel = system.output_channel
 
-gui = glooey.Gui(window, batch=sprites.batch, group=sprites.menu_group)
+        self.world = system.world
 
-
-class Game:
-    def __init__(self):
-        self.input_channel = SharedList()
-        self.output_channel = SharedList()
-
-        self.window = window
-        #self.batch = batch
-        #self.gui_group = gui_group
-        #self.actor_group = actor_group
-        #self.tile_group = tile_group
-
-        self.gui = gui
-
-        self.client = Client(self)
-        self.username = None
-        self.password = None
-        self.address = None
-        self.port = None
-        self.host = None
-
-        self.sprites = sprites
-        self.scenes = scenes.Manager(self)
-        scene = self.scenes.load(scenes.MainMenu)
-        self.scenes.add(scene)
-
-        self.world = VisualWorld()
-        self.world.set_game(self)
-
-        self.player = None
-        self.actor = None
-        self.selection = Selection()
-        self.close_actors = []
-        self.camera = Camera()
-        self.player_input = EventHandler(self)
 
         self.options = {LOGIN_RES: self.handle_login,
                         WORLD_INFO_RES: self.handle_world_info,
@@ -74,8 +30,6 @@ class Game:
                         DEL_ACTOR_COM: self.handle_del_actor
                         }
 
-    def start(self):
-        pyglet.app.run()
 
     def set_host(self, username, password, address, port):
         self.username = username
@@ -84,12 +38,8 @@ class Game:
         self.port = port
         self.host = address, port
 
-        self.client.set_host(address, port)
+        self.network.set_host(address, port)
 
-    def start_connection(self):
-        pyglet.clock.schedule_interval(self.handle_input, 1.0 / MSG_RATE)
-        self.client.query_server()
-        self.client.start()
 
     def set_actor(self, actor):
         self.actor = actor
@@ -150,7 +100,7 @@ class Game:
         print('Game World seed')
         self.world.set_seed(seed)
 
-        self.client.login_server(self.username, self.password)
+        self.network.login_server(self.username, self.password)
 
     def handle_login(self, message):
         print('Game: Logging into server')
@@ -164,14 +114,14 @@ class Game:
         actor = VisualActor(index, x, y, sprite)
         self.set_actor(actor)
 
-        host = self.client.connection.host
-        pool = self.client.connection.message_pool
+        host = self.network.connection.host
+        pool = self.network.connection.message_pool
         self.player = Player(host, self.actor, pool)
         
         self.world.set_actor(self.actor)
         self.world.update()
 
-        self.client.join_server(self.username, self.password)
+        self.network.join_server(self.username, self.password)
 
     def handle_accept(self, message):
         return
@@ -235,7 +185,7 @@ class Game:
     def update_server(self, delta):
         print('Game: Updating server')
         state = self.actor.get_state()
-        message = self.client.message(POS_UPDATE_COM, state)
+        message = self.network.message(POS_UPDATE_COM, state)
         self.output_channel.give(message, 'server')
 
 
