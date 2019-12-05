@@ -18,9 +18,6 @@ class Connection:
             self.port = None
             self.host_name = None
 
-        self.username = None
-        self.password = None
-
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.message_pool = MessagePool(15 * 10)  # 15msg/sec, 10 second buffer (large for testing)  
         self.message_index = 0
@@ -28,13 +25,11 @@ class Connection:
         self.timeout_warnings = 0
         self.index = -1
 
-    def set_host(self, address, port, username=None, password=None):
+    def set_host(self, address, port):
         self.address = address
         self.port = port
         self.host = address, port
         self.host_name = '%s:%s' % (address, port)
-        self.username = username
-        self.password = password
 
     def bind(self):
         self.socket.bind(self.host)
@@ -128,8 +123,8 @@ class Client(Thread):
 
             time.sleep(0.001)
 
-    def set_host(self, address, port, username=None, password=None):
-        self.connection.set_host(address, port, username, password)
+    def set_host(self, address, port):
+        self.connection.set_host(address, port)
 
     def handle_input(self, message):
         self.connection.confirm(message.index)
@@ -173,19 +168,15 @@ class Client(Thread):
 
 
 class Server(Thread):
-    def __init__(self, system, address, port):
+    def __init__(self, address, port, game):
         Thread.__init__(self)
-        self.address = address
-        self.port = port
-        self.host = address, port
-
-        self.incoming = Connection(self.host)
+        self.incoming = Connection((address, port))
         self.incoming.bind()
 
-        system.server = self
-        self.system = system
-        self.input_channel = system.input_channel
-        self.output_channel = system.output_channel
+        game.server = self
+        self.game = game
+        self.input_channel = game.input_channel
+        self.output_channel = game.output_channel
 
         self.outgoing = OutputManager(self)
 
