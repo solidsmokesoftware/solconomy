@@ -1,5 +1,5 @@
 # solconomy
-A very incomplete "game" written in Python with Pyglet and Glooey. I've stopped working on it for now and felt like sharing my code for those that would like an example.
+A very incomplete "game" written in Python with [Pyglet](http://pyglet.org/) and [Glooey](https://github.com/kxgames/glooey). I've stopped working on it for now and felt like sharing my code for those that would like an example.
 
 #Features:
 
@@ -8,4 +8,5 @@ A very incomplete "game" written in Python with Pyglet and Glooey. I've stopped 
 * Collecting resources and moving blocks
 * Movement and collision on a tilemap
 * Main menu and scene switching
-* Multi-threading
+* Multi-threading between network and main loop
+* Spatial Hash for chunk occlusion
