@@ -1,4 +1,3 @@
-from source.common.manager import Manager
 from source.common.constants import *
 
 
@@ -33,9 +32,9 @@ class Player:
         return results[0:-1]
 
 
-class PlayerMan(Manager):
+class Players:
     def __init__(self, game):
-        Manager.__init__(self)
+        self.items = {}
         self.game = game
 
     def add(self, host, actor, message_pool):
