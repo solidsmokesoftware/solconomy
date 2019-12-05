@@ -79,7 +79,7 @@ class MainMenu(Scene):
 
         portBox = glooey.HBox()
         portLabel = Sublabel('Port:')
-        self.portForm = Form('98765')
+        self.portForm = Form('65535')
         #self.portForm.push_handlers(on_unfocus=self.get_text)
         portBox.add(portLabel)
         portBox.add(self.portForm)
