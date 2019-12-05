@@ -5,8 +5,7 @@ from source.common.clock import Clock
 from source.common.constants import *
 from source.common.world import WorldServer
 from source.common.actors import LogicalActor as Actor
-from source.common.players import PlayerMan
-from source.server.battle import BattleMan
+from source.common.players import Players
 
 import random
 from threading import Thread
@@ -25,8 +24,7 @@ class Game(Thread):
         self.world.set_game(self)
         self.world.set_seed(1001)
 
-        self.battles = BattleMan(self)
-        self.players = PlayerMan(self)
+        self.players = Players(self)
 
         self.options = {LOGIN_COM: self.handle_login,
                         WORLD_INFO_COM: self.handle_world_info,
@@ -51,7 +49,6 @@ class Game(Thread):
         #try:
         while True:
             if self.clock.tick():
-                self.battles.update()
                 self.players.update()
 
             self.handle_input()
