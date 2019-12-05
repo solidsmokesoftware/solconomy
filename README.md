@@ -1,2 +1,2 @@
 # solconomy
-A very incomplete game writtwen in Python with Pyglet
+A very incomplete game writtwen in Python with Pyglet and Glooey
