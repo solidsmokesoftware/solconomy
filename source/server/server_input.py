@@ -1,32 +1,15 @@
-import sys
-import time
-from source.common.sharedlist import SharedList
-from source.common.clock import Clock
 from source.common.constants import *
-from source.common.world import WorldServer
-from source.common.actors import LogicalActor as Actor
-from source.common.players import PlayerMan
-from source.server.battle import BattleMan
-
-import random
-from threading import Thread
 
 
-class Game(Thread):
-    def __init__(self):
-        Thread.__init__(self)
-        self.host = ('server', 0)
-        self.clock = Clock(1/15.0)
-        self.input_channel = SharedList()
-        self.output_channel = SharedList()
-        self.ai_channel = SharedList()
+class ServerInput:
+    def __init__(self, system):
+        self.system = system
 
-        self.world = WorldServer()
-        self.world.set_game(self)
-        self.world.set_seed(1001)
+        self.input_channel = system.input_channel
+        self.output_channel = system.output_channel
 
-        self.battles = BattleMan(self)
-        self.players = PlayerMan(self)
+        self.players = system.data['players']
+        self.world = system.world
 
         self.options = {LOGIN_COM: self.handle_login,
                         WORLD_INFO_COM: self.handle_world_info,
@@ -44,19 +27,8 @@ class Game(Thread):
                         IDLE_COM: self.handle_idle
                         }
 
-
-
     def run(self):
-        self.world.start()
-        #try:
-        while True:
-            if self.clock.tick():
-                self.battles.update()
-                self.players.update()
-
-            self.handle_input()
-
-            time.sleep(0.001)
+        self.handle_input()
 
     def handle_input(self):
         messages = self.input_channel.get('game')
@@ -164,27 +136,3 @@ class Game(Thread):
         print('Game: Get actor: %s' % message.value)
         self.send(message)
 
-
-
-'''
-
-        if buttons & accept_key:
-            message.values['accept'] = True
-        if buttons & select_key:
-            message.values['select'] = True
-        if buttons & r_key:
-            message.values['r'] = True
-        if buttons & f_key:
-            message.values['f'] = True
-        if buttons & q_key:
-            message.values['q'] = True
-        if buttons & e_key:
-            message.values['e'] = True
-        if buttons & z_key:
-            message.values['z'] = True
-        if buttons & tab_key:
-            message.values['tab'] = True
-        if buttons & esc_key:
-            message.values['esc'] = True
-
-'''
