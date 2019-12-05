@@ -1,4 +1,4 @@
-
+from source.common.collection import Collection
 
 class SpatialHash:
     def __init__(self, size):
@@ -81,3 +81,29 @@ class SpatialHash:
                 break
 
         return results
+
+
+
+class Position:
+    def __init__(self, x, y, world, level):
+        self.x = x
+        self.y = y
+        self.world = world
+        self.level = level
+        self.pos = x, y
+
+    def move(self, x, y):
+        self.x += x
+        self.y += y
+        self.pos = self.x, self.y
+
+    def set(self, x, y):
+        self.x = x
+        self.y = y
+        self.pos = x, y
+
+
+class Spatial:
+    def __init__(self):
+        self.items = {}
+        self.space = SpatialHash(16)
