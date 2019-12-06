@@ -8,7 +8,7 @@ from source.common.constants import *
 
 class Actor:
     def __init__(self):
-        self.type = 'Actor'
+        self.type = "Actor"
         self.chunk = None
         self.inventory = {}
 

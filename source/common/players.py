@@ -2,12 +2,11 @@ from source.common.constants import *
 
 
 class Player:
-    def __init__(self, host, actor, message_pool):
+    def __init__(self, host, actor):
         self.host = host
         self.actor = actor
         self.index = actor.index
         self.nearby_actors = {}
-        self.message_pool = message_pool
 
     def get_changes(self, actors):
         results = ''
@@ -31,21 +30,3 @@ class Player:
 
         return results[0:-1]
 
-
-class Players:
-    def __init__(self, game):
-        self.items = {}
-        self.game = game
-
-    def add(self, host, actor, message_pool):
-        self.items[host] = Player(host, actor, message_pool)
-
-    def update(self):
-        for host in self.items:
-            player = self.items[host]
-
-            nearby = self.game.world.get_nearby(player.actor)
-            changes = player.get_changes(nearby)
-
-            message = player.message_pool.get(self.game.clock.get_value(), POS_UPDATE_RES, changes, player.host)
-            self.game.send(message)

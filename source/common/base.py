@@ -2,28 +2,28 @@ import source.client.sprites as sprites
 from source.common.constants import *
 
 class Object:
-    def __init__(self, index, x, y):
-        self.type = 'Object'
-        self.index = index
-        self.x = x
-        self.y = y
-        self.pos = x, y
+   def __init__(self, index, x, y):
+      self.type = 'Object'
+      self.index = index
+      self.x = x
+      self.y = y
+      self.pos = x, y
 
-    def get_state(self):
-        return '%s:%s#%s' % (self.index, self.x, self.y)
+   def get_state(self):
+      return f"{self.index}:{self.x}:{self.y}"
 
-    def set_tile(self, x, y):
-        self.x = x
-        self.y = y
-        self.set_pos(x, y)
+   def set_tile(self, x, y):
+      self.x = x
+      self.y = y
+      self.set_pos(x, y)
 
-    def move(self, x, y):
-        self.x += x
-        self.y += y
-        self.set_pos(self.x, self.y)
+   def move(self, x, y):
+      self.x += x
+      self.y += y
+      self.set_pos(self.x, self.y)
 
-    def set_pos(self, x, y):
-        self.pos = x, y
+   def set_pos(self, x, y):
+      self.pos = x, y
 
 
 class VisualObject(Object):
