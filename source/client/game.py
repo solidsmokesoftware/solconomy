@@ -7,235 +7,239 @@ from source.client.camera import Camera
 from source.client.events import EventHandler
 
 from source.common.constants import *
-from source.common.network import Client
+from source.common.network import Network
 from source.common.sharedlist import SharedList
 from source.common.players import Player
 from source.common.base import Selection
-from source.common.actors import VisualActor
-from source.common.world import VisualWorld
+from source.common.actors import VisualActor as Actor
+from source.common.world import VisualWorld as World
 
+###
 
-window = pyglet.window.Window(WINDOW_SIZE_X, WINDOW_SIZE_Y)
-
-gui = glooey.Gui(window, batch=sprites.batch, group=sprites.menu_group)
+import time
+from threading import Thread
+from source.common.clock import Clock
+from source.common.messenger import Messenger
 
 
 class Game:
-    def __init__(self):
-        self.input_channel = SharedList()
-        self.output_channel = SharedList()
+   def __init__(self):
+      self.window = pyglet.window.Window(WINDOW_SIZE_X, WINDOW_SIZE_Y)
+      self.gui = glooey.Gui(self.window, batch=sprites.batch, group=sprites.menu_group)
 
-        self.window = window
-        #self.batch = batch
-        #self.gui_group = gui_group
-        #self.actor_group = actor_group
-        #self.tile_group = tile_group
+      self.batch = sprites.batch
+      self.clock = Clock(1.0/10.0)
+      self.network = None
+      self.incoming = Messenger()
+      self.incoming_handler = Thread(target=self.handle_incoming)
+      self.run_handler = Thread(target=self.run)
 
-        self.gui = gui
+      self.actors = {}
+      self.direction = b"0/0"
+      self.server_tick = 0
 
-        self.client = Client(self)
-        self.username = None
-        self.password = None
-        self.address = None
-        self.port = None
-        self.host = None
+      #pyglet.clock.schedule_interval(self.on_draw, 1.0 / 10.0)
+      #pyglet.clock.schedule_interval(self.run, 1.0 / 10.0)
 
-        self.sprites = sprites
-        self.scenes = scenes.Manager(self)
-        scene = self.scenes.load(scenes.MainMenu)
-        self.scenes.add(scene)
+      self.username = None
+      self.password = None
+      self.address = None
+      self.port = None
+      self.host = None
 
-        self.world = VisualWorld()
-        self.world.set_game(self)
+      self.sprites = sprites
+      self.scenes = scenes.Manager(self)
+      scene = self.scenes.load(scenes.MainMenu)
+      self.scenes.add(scene)
 
-        self.player = None
-        self.actor = None
-        self.selection = Selection()
-        self.close_actors = []
-        self.camera = Camera()
-        self.player_input = EventHandler(self)
+      self.world = World()
 
-        self.options = {LOGIN_RES: self.handle_login,
-                        WORLD_INFO_RES: self.handle_world_info,
-                        JOIN_RES: self.handle_join,
-                        POS_UPDATE_RES: self.handle_pos_update,
-                        ACCEPT_RES: self.handle_accept,
-                        DECLINE_RES: self.handle_decline,
-                        MESSAGE_RES: self.handle_player_message,
-                        BATTLE_RES: self.handle_battle,
-                        CHALLENGE_RES: self.handle_challenge,
-                        POS_INFO_RES: self.handle_pos_info,
-                        PART_INFO_RES: self.handle_part_info,
-                        FULL_INFO_RES: self.handle_full_info,
-                        EQUIP_INFO_RES: self.handle_equip_info,
-                        IDLE_RES: self.handle_idle,
+      self.player = None
+      self.actor = None
+      self.selection = Selection()
+      self.close_actors = []
+      self.camera = Camera()
+      self.events = EventHandler(self)
 
-                        MAKE_ACTOR_COM: self.handle_make_actor,
-                        DEL_ACTOR_COM: self.handle_del_actor
-                        }
+      self.options = {LOGIN_RES.encode(): self.handle_login,
+                  POS_UPDATE_RES.encode(): self.handle_pos_update,
+                  ACCEPT_RES.encode(): self.handle_accept,
+                  DECLINE_RES.encode(): self.handle_decline,
+                  MESSAGE_RES.encode(): self.handle_player_message,
+                  BATTLE_RES.encode(): self.handle_battle,
+                  CHALLENGE_RES.encode(): self.handle_challenge,
+                  POS_INFO_RES.encode(): self.handle_pos_info,
+                  PART_INFO_RES.encode(): self.handle_part_info,
+                  FULL_INFO_RES.encode(): self.handle_full_info,
+                  EQUIP_INFO_RES.encode(): self.handle_equip_info,
+                  IDLE_RES.encode(): self.handle_idle,
 
-    def start(self):
-        pyglet.app.run()
+                  MAKE_ACTOR_COM.encode(): self.handle_make_actor,
+                  DEL_ACTOR_COM.encode(): self.handle_del_actor
+                  }
 
-    def set_host(self, username, password, address, port):
-        self.username = username
-        self.password = password
-        self.address = address
-        self.port = port
-        self.host = address, port
+   def start(self):
+      pyglet.app.run()
 
-        self.client.set_host(address, port)
+   def set_host(self, username, password, address, port):
+      self.username = username
+      self.password = password
+      self.address = address
+      self.port = port
+      self.host = address, port
 
-    def start_connection(self):
-        pyglet.clock.schedule_interval(self.handle_input, 1.0 / MSG_RATE)
-        self.client.query_server()
-        self.client.start()
+      self.network = Network(address, port, self.clock)
 
-    def set_actor(self, actor):
-        self.actor = actor
-        #self.player.actor = actor
-        self.player_input.actor = actor
+   def start_connection(self):
+      print("Game: Starting connection")
+      
+      msg = f"{self.username}/{self.password}/{LOGIN_COM}/0"
+      self.network.send_data(msg.encode())
+      packet = self.network.recv()
+      data = packet.data.split(b"/")
+      self.handle_login(data)
+
+      self.incoming_handler.start() #Thread that calls handle_incoming to run the network
+      self.run_handler.start()
+      self.events.start()
+
+   def handle_login(self, data):
+      print('Game: Logging into server')
+      values = data[0].split(b":")
+      seed = int(data[1])
+
+      index = int(values[0])
+      x = int(values[1])
+      y = int(values[2])
+     
+      image = sprites.make_image('soul.png')
+      sprite = sprites.make_actor(image, x, y)
+      actor = Actor(index, x, y, sprite)
+      self.actor = actor
+      self.events.actor = actor
+
+      host = self.network.connection.host
+      pool = self.network.connection
+      self.player = Player(host, self.actor)
+
+      self.world.set_seed(seed)
+      self.world.set_actor(self.actor)
+      self.world.update()
+
+      self.camera.focus_on(self.actor)
 
 
-    def handle_input(self, delta):
-        #print('Handling input')
-        messages = self.input_channel.get('game')
-        for message in messages:
-            self.handle_message(message)
+   #Network thread
+   def handle_incoming(self):
+      while True:
+         packet = self.network.recv()
+         if packet:
+            packet.data = packet.data.split(b"/")
+            self.incoming.give(packet)
+         time.sleep(SMALL_NUMBER)
 
-    def handle_message(self, message):
-        results = self.options[message.command](message)
-        #print('Game: handling message %s' % message.command)
-        return results
+   def run(self):
+      while True:
+         #print('Game: Running')
+         delta = self.clock.delta()
+         if delta > 0:
+            #print("Game: Tick")
+            packets = self.incoming.get()
+            for packet in packets:
+               #try:
+               print(f"Game: Packet {packet.data} from {packet.host}")
+               self.server_tick = int(packet.data[-1])
+               self.options[packet.data[-2]](packet.data)
+               #except:
+               #   print(f"Game: Bad packet {packet.data} from {packet.host}")
+            
+            self.update_server(delta)
 
-    def handle_pos_update(self, message):
-        print(message.value)
+   def handle_pos_update(self, data):
+      print(f"Game: Handling pos update {data}")
 
-        for value in message.value:
-            actor_index = int(value[0][0])
-            x = int(value[1][0])
-            y = int(value[1][1])
-            pos = x * tile_size, y * tile_size
-            self.close_actors.append([actor_index, pos])
+      objects = data[0].split(b"-")
 
-            if actor_index in self.world.actors.items:
-                if actor_index == self.player.index:
-                    pass
-                else:
-                    actor = self.world.actors[actor_index]
-                    self.world.actors.move(actor, x, y)
+      for object in objects:
+         print(f"Game: step {object}")
+         values = object.split(b":")
+         index = int(values[0])
+         x = int(values[0])
+         y = int(values[1])
+         pos = x * TILE_SIZE, y * TILE_SIZE
+         self.close_actors.append([index, pos])
+
+         if index in self.world.actors:
+            if index == self.player.index:
+               pass
             else:
-                actor = self.world.actors.recreate(actor_index, 'Orc', ('unknown', 'unknown'), x, y)
+               actor = self.world.actors[index]
+               self.world.actors.move(actor, x, y)
+         else:
+            image = sprites.make_image('soul.png')
+            sprite = sprites.make_actor(image, x, y)
+            actor = Actor(index, x, y, sprite)
+            self.world.actors[id] = actor
 
-    def handle_join(self, message):
-        print('Game: handling join called %s' % message.value)
-        value = message.value
-        index = int(value[0][0][0])
-        x = int(value[0][1][0]) * TILE_SIZE
-        y = int(value[0][1][1]) * TILE_SIZE
+   def update_server(self, delta):
+      print('Game: Updating server')
+      state = self.actor.get_state()
+      msg = f"{state}/{POS_UPDATE_COM}/{self.server_tick}"
+      self.network.send_data(msg.encode())
 
-        pyglet.clock.schedule_interval(self.update_server, 1.0 / MSG_RATE)
-        self.camera.focus_on(self.actor)
-        self.player_input.start()
+   def handle_bad_message(self, data):
+      return
 
-    def handle_bad_message(self, message):
-        return
+   def handle_accept(self, data):
+      return
 
-    def handle_world_info(self, message):
-        print('Game: Generating world from message')
-        value = message.value
-        seed = int(value[0][0][0])
-        token = int(value[1][0][0])
+   def handle_decline(self, data):
+      return
 
-        print('Game World seed')
-        self.world.set_seed(seed)
+   def handle_player_message(self, data):
+      return
 
-        self.client.login_server(self.username, self.password)
+   def handle_battle(self, data):
+      print(data)
 
-    def handle_login(self, message):
-        print('Game: Logging into server')
-        value = message.value
-        index = int(value[0][0][0])
-        x = int(value[0][1][0])
-        y = int(value[0][1][1])
+   def handle_challenge(self, data):
+      print(data)
 
-        image = sprites.make_image('soul.png')
-        sprite = sprites.make_actor(image, x, y)
-        actor = VisualActor(index, x, y, sprite)
-        self.set_actor(actor)
+   def handle_pos_info(self, data):
+      print(data)
 
-        host = self.client.connection.host
-        pool = self.client.connection.message_pool
-        self.player = Player(host, self.actor, pool)
-        
-        self.world.set_actor(self.actor)
-        self.world.update()
+   def handle_part_info(self, data):
+      print(data)
 
-        self.client.join_server(self.username, self.password)
+   def handle_equip_info(self, data):
+      print(data)
 
-    def handle_accept(self, message):
-        return
+   def handle_full_info(self, data):
+      print(data)
 
-    def handle_decline(self, message):
-        return
+      index = data[0]
+      full_name = data[1]
+      subrace = data[2]
+      warband = data[3]
+      rank = data[4]
+      level = data[5]
+      x = data[6]
+      y = data[7]
+      hp = data[8]
+      hp_max = data[9]
+      datas = [full_name, level, subrace, rank, warband, hp, hp_max]
+      data = '%s\n%s, %s\n%s, %s\n%s/%s' % datas
+      player.view(data)
 
-    def handle_player_message(self, message):
-        return
+   def handle_idle(self, data):
+      print(data)
 
-    def handle_battle(self, message):
-        value = message.value
-        print(value)
+   def handle_make_actor(self, data):
+      print(data)
 
-    def handle_challenge(self, message):
-        value = message.value
-        print(value)
+   def handle_del_actor(self, data):
+      print(data)
 
-    def handle_pos_info(self, message):
-        value = message.value
-        print(value)
 
-    def handle_part_info(self, message):
-        value = message.value
-        print(value)
-
-    def handle_equip_info(self, message):
-        value = message.value
-        print(value)
-
-    def handle_full_info(self, message):
-        value = message.value
-        print(value)
-
-        index = value[0][0][0]
-        full_name = value[0][1][0]
-        subrace = value[0][2][0]
-        warband = value[0][3][0]
-        rank = value[0][3][1]
-        level = value[0][4][0]
-        x = value[0][5][0]
-        y = value[0][5][1]
-        hp = value[0][6][0]
-        hp_max = value[0][6][1]
-        values = [full_name, level, subrace, rank, warband, hp, hp_max]
-        value = '%s\n%s, %s\n%s, %s\n%s/%s' % values
-        player.view(value)
-
-    def handle_idle(self, message):
-        value = message.value
-        print(value)
-
-    def handle_make_actor(self, message):
-        value = message.value
-        print(value)
-
-    def handle_del_actor(self, message):
-        value = message.value
-        print(value)
-
-    def update_server(self, delta):
-        print('Game: Updating server')
-        state = self.actor.get_state()
-        message = self.client.message(POS_UPDATE_COM, state)
-        self.output_channel.give(message, 'server')
 
 
