@@ -3,185 +3,173 @@ import time
 from source.common.sharedlist import SharedList
 from source.common.clock import Clock
 from source.common.constants import *
-from source.common.world import WorldServer
+from source.common.world import LogicalWorld as World
 from source.common.actors import LogicalActor as Actor
-from source.common.players import Players
 
 import random
+
+###
+
 from threading import Thread
+from source.common.messenger import Messenger
+from source.common.network import Network
+from source.common.index import Index
 
 
-class Game(Thread):
-    def __init__(self):
-        Thread.__init__(self)
-        self.host = ('server', 0)
-        self.clock = Clock(1/15.0)
-        self.input_channel = SharedList()
-        self.output_channel = SharedList()
-        self.ai_channel = SharedList()
+class Game:
+   def __init__(self, address, port):
+      self.incoming_handler = Thread(target=self.handle_incoming)
+      self.run_handler = Thread(target=self.run)
+      self.tile_loader = Thread(target=self.load_tiles)
 
-        self.world = WorldServer()
-        self.world.set_game(self)
-        self.world.set_seed(1001)
+      self.clock = Clock(1/10.0)
+      self.world_clock = Clock(1)
+      self.network = Network(address, port, self.clock)
+      self.incoming = Messenger()
+      self.index = Index()
 
-        self.players = Players(self)
+      self.world = World()
+      self.world.set_seed(1001)
 
-        self.options = {LOGIN_COM: self.handle_login,
-                        WORLD_INFO_COM: self.handle_world_info,
-                        JOIN_COM: self.handle_join,
-                        POS_UPDATE_COM: self.handle_pos_update,
-                        ACCEPT_COM: self.handle_accept,
-                        DECLINE_COM: self.handle_decline,
-                        MESSAGE_COM: self.handle_player_message,
-                        BATTLE_COM: self.handle_battle,
-                        CHALLENGE_COM: self.handle_challenge,
-                        POS_INFO_COM: self.handle_pos_info,
-                        PART_INFO_COM: self.handle_part_info,
-                        FULL_INFO_COM: self.handle_full_info,
-                        EQUIP_INFO_COM: self.handle_equip_info,
-                        IDLE_COM: self.handle_idle
-                        }
+      self.players = {}
 
+      self.options = {LOGIN_COM.encode(): self.handle_login,
+                  POS_UPDATE_COM.encode(): self.handle_pos_update,
+                  ACCEPT_COM.encode(): self.handle_accept,
+                  DECLINE_COM.encode(): self.handle_decline,
+                  MESSAGE_COM.encode(): self.handle_player_message,
+                  BATTLE_COM.encode(): self.handle_battle,
+                  CHALLENGE_COM.encode(): self.handle_challenge,
+                  POS_INFO_COM.encode(): self.handle_pos_info,
+                  PART_INFO_COM.encode(): self.handle_part_info,
+                  FULL_INFO_COM.encode(): self.handle_full_info,
+                  EQUIP_INFO_COM.encode(): self.handle_equip_info,
+                  IDLE_COM.encode(): self.handle_idle
+                     }
 
+   def start(self):
+      self.network.bind()
+      self.incoming_handler.start()
+      self.run_handler.start()
 
-    def run(self):
-        self.world.start()
-        #try:
-        while True:
-            if self.clock.tick():
-                self.players.update()
+   def handle_incoming(self):
+      #print("Game: Waiting for input")
+      while True:
+         print("Game: Waiting for input")
+         packet = self.network.recv()
+         if packet:
+            self.incoming.give(packet)
+         time.sleep(SMALL_NUMBER)
 
+   def load_tiles(self):
+      while True:
+         if self.world_clock.tick():
+            self.world.update()
+
+         time.sleep(1)
+
+   def run(self):
+      #try:
+      while True:
+         if self.clock.tick():
+            #print(f"Game: Running {self.clock.time.value}")
             self.handle_input()
+            self.update_players()
 
-            time.sleep(0.001)
+         time.sleep(SMALL_NUMBER)
 
-    def handle_input(self):
-        messages = self.input_channel.get('game')
-        for message in messages:
-            self.options[message.command](message)
+   def handle_input(self):
+      packets = self.incoming.get()
+      for packet in packets:
+         #try:
+         packet.data = packet.data.split(b"/")
+         self.options[packet.data[-2]](packet)
+         
+         #except:
+         #   print(f"Game: Bad packet {packet.data} from {packet.host}")
 
-    def handle_player_pos_update(self, message):
-        player = self.players.get(message.host)
-        button = int(message.value[0][0][0])
-        x = int(message.value[0][1][0])
-        y = int(message.value[0][1][1])
-
-        actor = player.actor
-        actor.update_pos(x, y)
-
-    def handle_pos_update(self, message):
-        index = int(message.value[0][0][0])
-        x = int(message.value[0][1][0])
-        y = int(message.value[0][1][1])
-
-        actor = self.world.get_actor(index)
-        actor.set_tile(x, y)
-
-    def handle_join(self, message):
-        # TODO create an actor for the player on join
-        username = message.value[0][0][0]
-        password = message.value[0][1][0]
-
-        random.seed(message.host_name)
-        index = random.randint(0, sys.maxsize)
-
-        actor = Actor(0, 0, 0)
-        self.world.add_actor(actor)
-        self.world.add_player_actor(actor)
-
-        message.update(0, JOIN_RES, '0:0#0', message.host)
-        self.send(message)
-
-    def handle_world_info(self, message):
-        value = '%s%s|' % (self.world.get_seed(), random.randint(0, sys.maxsize))
-        message.update(-1, WORLD_INFO_RES, value, message.host)
-        self.send(message)
-
-    def handle_login(self, message):
-        username = message.value[0][0][0]
-        password = message.value[0][1][0]
-
-        # TODO log the player in if they have an account and retrive their character list
-
-        random.seed(message.host_name)
-        index = random.randint(0, sys.maxsize)
+   def update_players(self):
+      for host in self.players:
+         actor = self.players[host]
+         msg = f"{actor.get_state()}/{POS_UPDATE_RES}/{self.clock.time.value}"
+         self.network.sendto(msg.encode(), host)
 
 
+   def handle_player_pos_update(self, packet):
+      player = self.players.get(packet.host)
+      button = int(packet.data[0])
+      x = int(packet.data[1])
+      y = int(packet.data[1])
 
-        #value = '%s:%s#%s' % (index, x, y)
-        value = '0:0#0'
+      actor = player.actor
+      actor.update_pos(x, y)
 
-        message.update(-2, LOGIN_RES, value, message.host)
-        self.send(message)
+   def handle_pos_update(self, packet):
+      data = packet.data[0].split(b":")
+      index = int(data[0])
+      x = int(data[1])
+      y = int(data[2])
 
-    def handle_player_message(self, message):
-        return
+      actor = self.world.actors[index]
+      actor.set_tile(x, y)
 
-    def handle_battle(self, message):
-        return
+   def handle_login(self, packet):
+      # TODO create an actor for the player on join
+      print("Game: Handling join")
+      username = packet.data[0]
+      password = packet.data[1]
 
-    def handle_challenge(self, message):
-        return
+      id = self.index.get()
 
-    def handle_accept(self, message):
-        return
+      actor = Actor(id, 0, 0)
+      self.players[packet.host] = actor
+      self.world.add_actor(actor)
+      self.world.add_player_actor(actor)
 
-    def handle_decline(self, message):
-        return
+      msg = f"{actor.get_state()}/{self.world.get_seed()}/{LOGIN_RES}/{self.clock.time.value}"
+      self.network.sendto(msg.encode(), packet.host)
 
-    def handle_pos_info(self, message):
-        return
+   def handle_player_message(self, packet):
+      return
 
-    def handle_part_info(self, message):
-        return
+   def handle_battle(self, packet):
+      return
 
-    def handle_full_info(self, message):
-        return
+   def handle_challenge(self, packet):
+      return
 
-    def handle_equip_info(self, message):
-        return
+   def handle_accept(self, packet):
+      return
 
-    def handle_idle(self, message):
-        return        
+   def handle_decline(self, packet):
+      return
 
-    def send(self, message):
-        self.output_channel.give(message, message.host)
+   def handle_pos_info(self, packet):
+      return
 
-    def handle_get_actors(self, message):
-        return message
+   def handle_part_info(self, packet):
+      return
 
-    def handle_get_actor_info(self, message):
-        value = message.value
-        index = int(value[0][0][0])
-        info = int(value[0][1][0])
+   def handle_full_info(self, packet):
+      return
 
-        message.value = '%s' % self.world.get_actor_info(index, info)
-        message.command = info
+   def handle_equip_info(self, packet):
+      return
 
-        print('Game: Get actor: %s' % message.value)
-        self.send(message)
+   def handle_idle(self, packet):
+      return        
 
+   def handle_get_actors(self, packet):
+      return packet
 
+   def handle_get_actor_info(self, packet):
+      index = int(packet.data[0])
+      info = int(packet.data[1])
 
-'''
+      packet.data = '%s' % self.world.get_actor_info(index, info)
+      packet.command = info
 
-        if buttons & accept_key:
-            message.values['accept'] = True
-        if buttons & select_key:
-            message.values['select'] = True
-        if buttons & r_key:
-            message.values['r'] = True
-        if buttons & f_key:
-            message.values['f'] = True
-        if buttons & q_key:
-            message.values['q'] = True
-        if buttons & e_key:
-            message.values['e'] = True
-        if buttons & z_key:
-            message.values['z'] = True
-        if buttons & tab_key:
-            message.values['tab'] = True
-        if buttons & esc_key:
-            message.values['esc'] = True
+      msg = f"{self.world.get_actor_info(index, info)}/{info}/{self.clock.time.value}"
 
-'''
+      print('Game: Get actor: %s' % msg)
+      self.network.sendto(msg.encode(), packet.host)
