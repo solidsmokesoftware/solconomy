@@ -1,25 +1,39 @@
-#import numpy
+
 import ctypes
 import time
 
 
-
 class Clock:
-    def __init__(self, rate):
-        self.tick_rate = rate
+   def __init__(self, rate):
+      self.rate = rate
+      self.time = ctypes.c_ulong(0) #Hack for free rollover
+      self.last = time.time()
 
-        #self.value = numpy.int64(0)
-        self.value = ctypes.c_ulong(0)
-        self.last_tick = time.time()
+   def tick(self):
+      now = time.time()
+      if now - self.last > self.rate:
+         self.last = now
+         self.time.value += 1
+         return True
+      else:
+         return False
 
-    def get_value(self):
-        return self.value.value
+   def value(self):
+      now = time.time()
+      value = now - self.last
+      if value > self.rate:
+         self.last = now
+         self.time.value += 1
+      return value
 
-    def tick(self):
-        results = False
-        current_time = time.time()
-        if current_time - self.last_tick > self.tick_rate:
-            results = True
-            self.last_tick = current_time
-            self.value.value += 1
-        return results
+   def delta(self):
+      now = time.time()
+      value = now - self.last
+      if value > self.rate:
+         delta = value / self.rate
+         self.time.value += 1
+         self.last = now
+         return delta
+      else:
+         return 0
+
