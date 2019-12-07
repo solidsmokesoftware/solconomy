@@ -79,7 +79,7 @@ class Network:
    def recv(self):
       try:
          data, host = self.socket.recvfrom(1024)
-         print(f"Network: recv {data}")
+         #print(f"Network: recv {data}")
          packet = Packet(data, host)
          self.log(packet)
          return packet
@@ -88,7 +88,7 @@ class Network:
 
    def send(self, packet):
       try:
-         print(f"Network: Sending {packet.data}")
+         #print(f"Network: Sending {packet.data}")
          self.socket.sendto(packet.data, packet.host)
          #self.connection.log(packet, self.clock.time)
       except:
@@ -96,7 +96,7 @@ class Network:
 
    def sendto(self, data, host):
       try:
-         print(f"Network: Sending {data}")
+         #print(f"Network: Sending {data}")
          self.socket.sendto(data, host)
          #self.connection.log(packet, self.clock.time)
       except:
@@ -107,7 +107,7 @@ class Network:
 
    def sendall(self, data):
       try:
-         print(f"Sending all #{data}")
+         #print(f"Sending all #{data}")
          for con in self.connections:
              self.sendto(data, con[1].host)
       except:
