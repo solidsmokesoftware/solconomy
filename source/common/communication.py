@@ -28,7 +28,9 @@ class Parser:
    def decode(self, data):
       return data.split(self.sep[0])
 
-   def player_pos(self, data):
-      data = data.split(self.sep[0])
-      data[0] = data.split(self.sep[1])
-      return data
+   #These should be named something more abstract
+   def pos(self, data):
+      return data.split(self.sep[1])
+
+   def split(self, data):
+      return data.split(self.sep[2])
