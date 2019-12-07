@@ -29,7 +29,7 @@ class Game:
       self.gui = glooey.Gui(self.window, batch=sprites.batch, group=sprites.menu_group)
 
       self.batch = sprites.batch
-      self.clock = Clock(1.0/10.0)
+      self.clock = Clock(1.0/MSG_RATE)
       self.network = None
       self.parser = Parser()
       self.incoming = Messenger()
@@ -58,6 +58,7 @@ class Game:
 
       self.player = None
       self.actor = None
+      self.actors = {}
       self.selection = Selection()
       self.close_actors = []
       self.camera = Camera()
@@ -115,6 +116,7 @@ class Game:
       sprite = sprites.make_actor(image, x, y)
       actor = Actor(index, x, y, sprite)
       self.actor = actor
+      self.actors[index] = actor
       self.events.actor = actor
 
       host = self.network.connection.host
@@ -155,29 +157,15 @@ class Game:
             self.update_server(delta)
 
    def handle_pos(self, packet):
-      #print(f"Game: Handling pos update {packet.data}")
-
-      object = self.parser.split(packet.data[0])
-
-      #print(f"Game: step {object}")
-      values = self.parser.pos(object)
+      print(f"Game: Handling pos update {packet.data}")
+      values = self.parser.pos(packet.data[0])
       index = int(values[0])
-      x = int(values[0])
-      y = int(values[1])
-      pos = x * TILE_SIZE, y * TILE_SIZE
-      self.close_actors.append([index, pos])
-
-      if index in self.world.actors:
-         if index == self.player.index:
-            pass
-         else:
-            actor = self.world.actors[index]
-            self.world.actors.move(actor, x, y)
-      else:
-         image = sprites.make_image('soul.png')
-         sprite = sprites.make_actor(image, x, y)
-         actor = Actor(index, x, y, sprite)
-         self.world.actors[id] = actor
+      if index != self.actor.index:
+         x = int(values[1])
+         y = int(values[2])
+         actor = self.actors[index]
+         actor.set_tile(x, y)
+      
 
    def update_server(self, delta):
       state = self.actor.get_state()
@@ -192,10 +180,22 @@ class Game:
       print(packet.data)
 
    def handle_new_actor(self, packet):
-      print(packet.data)
+      print(f"Handling new actor: {packet.data}")
+      values = self.parser.pos(packet.data[0])
+      index = int(values[0])
+      if index != self.actor.index:
+         x = int(values[1])
+         y = int(values[2])
+
+         image = sprites.make_image('soul.png')
+         sprite = sprites.make_actor(image, x, y)
+         actor = Actor(index, x, y, sprite)
+         self.actors[index] = actor 
+         #Not adding other actors to the world for right now.
 
    def handle_del_actor(self, packet):
       print(packet.data)
+      del self.actors[index]
 
    def handle_block(self, packet):
       print(packet.data)

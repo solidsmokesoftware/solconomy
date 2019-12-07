@@ -18,8 +18,8 @@ class Camera:
         glScalef(self.scale, self.scale, self.scale)
 
     def focus_on(self, actor):
-        x = actor.pos[0] - 600
-        y = actor.pos[1] - 350
+        x = actor.pos[0] - 300#600
+        y = actor.pos[1] - 300#350
         self.scroll(x, y)
 
     def set_pos(self, x, y):
