@@ -79,7 +79,7 @@ class Network:
    def recv(self):
       try:
          data, host = self.socket.recvfrom(1024)
-         #print(f"Network: recv {data}")
+         print(f"Network: recv {data} from {host}")
          packet = Packet(data, host)
          self.log(packet)
          return packet
@@ -87,31 +87,31 @@ class Network:
          print("Network: err recv")
 
    def send(self, packet):
-      try:
-         #print(f"Network: Sending {packet.data}")
-         self.socket.sendto(packet.data, packet.host)
+      #try:
+      print(f"Network: Sending {packet.data} to {host}")
+      self.socket.sendto(packet.data, packet.host)
          #self.connection.log(packet, self.clock.time)
-      except:
-         print("Network: err sending")
+      #except:
+      #   print("Network: err sending")
 
    def sendto(self, data, host):
-      try:
-         #print(f"Network: Sending {data}")
-         self.socket.sendto(data, host)
+      #try:
+      print(f"Network: Sending {data} to {host}")
+      self.socket.sendto(data, host)
          #self.connection.log(packet, self.clock.time)
-      except:
-         print("Network: err sending")
+      #except:
+      #   print("Network: err sending")
       
    def send_data(self, data):
       self.sendto(data, self.connection.host)
 
    def sendall(self, data):
-      try:
-         #print(f"Sending all #{data}")
-         for con in self.connections:
-             self.sendto(data, con[1].host)
-      except:
-         print("Network: err sendall")
+      #try:
+      print(f"Sending all #{data}")
+      for con in self.connections:
+         self.sendto(data, con)
+      #except:
+      #   print("Network: err sendall")
 
    def log(self, packet):
       if packet.host in self.connections:
@@ -120,7 +120,7 @@ class Network:
          self.connections[packet.host] = Connection(packet.host[0], packet.host[1])
 
    def check_connections(self):
-      #print("Server: Checking connections")
+      print("Server: Checking connections")
       dead = []
       time = self.clock.time.value
       for con in self.connections:
