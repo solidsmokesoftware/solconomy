@@ -155,7 +155,7 @@ class Builder:
                elif mana > 0.5 and temp < 50:
                   block_item = ONXY
 
-      return (x, y, result, block, block_item)
+      return (x*(TILE_SIZE-1), y*(TILE_SIZE-1), result, block, block_item)
 
 
 class World:

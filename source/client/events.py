@@ -55,15 +55,23 @@ class EventHandler:
       return
        
    def on_mouse_press(self, x, y, button, modifiers):
+      xo = self.actor.position.x - (WINDOW_SIZE_X // 2) + x
+      yo = self.actor.position.y - (WINDOW_SIZE_Y // 2) + y
       if button == 1:
          print("click")
-         collisions = self.objects.find(x, y)
+         collisions = self.objects.find(xo, yo)
          for body in collisions:
             print(body.name)
             if body.name == "block":
-               string = f"{tile.x}/{tile.y}/0/{PLAYER_BLOCK}"
+               string = f"{body.id}/{PLAYER_DEL_ACTOR}"
                self.objects.updates.append(string)
                self.objects.delete(body)
+      
+      elif button == 4:
+         xd = xo - self.actor.position.x
+         yd = yo - self.actor.position.y
+         self.objects.place(self.actor, xo, yo)
+         self.camera.move(xd, yd)
 
    def on_mouse_motion(self, x, y, dx, dy):
       return

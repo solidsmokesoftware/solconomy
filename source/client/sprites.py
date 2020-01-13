@@ -67,13 +67,13 @@ def get_sprite(x, y, image, group):
    return sprite_pool.get()
 
 def make_tile(x, y, index):
-   return make_sprite(x*(TILE_SIZE-1), y*(TILE_SIZE-1), tile_images[index], tile_group)
+   return make_sprite(x, y, tile_images[index], tile_group)
 
 def make_block(x, y, index):
-   return make_sprite(x*(TILE_SIZE-1), y*(TILE_SIZE-1), block_images[index], block_group)
+   return make_sprite(x, y, block_images[index], block_group)
 
 def make_item(x, y, index):
-   return make_sprite(x*(TILE_SIZE-1), y*(TILE_SIZE-1), block_images[index], block_item_group)
+   return make_sprite(x, y, block_images[index], block_item_group)
 
 def make_actor(image, x, y):
    return make_sprite(x, y, image, actor_group)
