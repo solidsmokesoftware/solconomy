@@ -27,7 +27,7 @@ class Server:
 
       self.options = {
          PLAYER_POS.encode(): self.handle_pos,
-         PLAYER_DEL_ACTOR.encode(): self.handle_del
+         PLAYER_DELETE.encode(): self.handle_del
       }
 
    def start(self):
@@ -40,7 +40,7 @@ class Server:
       self.network_runner.start()
 
       while self.running:
-         delta = self.clock.tick_delta()
+         delta = self.clock.tick()
          if delta:
             self.run(delta)
          time.sleep(SMALL_NUMBER)
@@ -95,7 +95,7 @@ class Server:
       
       for host in self.players:
          actor = self.players[host]
-         string = f"{actor.add_info()}/{SERVER_NEW_ACTOR}"
+         string = f"{actor.add_com()}/{SERVER_NEW_ACTOR}"
          self.outgoing.append((string, message.host))
 
       self.players[message.host] = actor

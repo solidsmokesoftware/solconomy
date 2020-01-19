@@ -2,6 +2,7 @@ import pyglet
 import time
 from threading import Thread
 
+
 import source.client.sprites as sprites
 from source.client.camera import Camera
 from source.client.events import EventHandler
@@ -9,20 +10,13 @@ from source.common.network import Network
 from source.common.objects import ClientObjects
 from source.common.messenger import Messenger
 from source.common.constants import *
+from source.pysics.clock import SyncClock
 
-
-#Dumb clock for passing time by ref
-class Clock:
-   def __init__(self):
-      self.time = 0
-
-   def get_time(self):
-      return self.time
 
 
 class Client:
    def __init__(self):
-      self.clock = Clock()
+      self.clock = SyncClock()
       self.running = False
       self.objects = ClientObjects(ZONE_SIZE)
 
@@ -44,7 +38,6 @@ class Client:
       
       self.player = None
       self.actor = None
-      #self.selection = Selection()
       self.camera = Camera()
       self.events = EventHandler(self)
 
@@ -112,7 +105,7 @@ class Client:
       self.handle_incoming()
       #self.handle_turn(delta)
       self.handle_input(delta)
-      #self.handle_animations(delta)
+      self.handle_animations(delta)
       self.handle_outgoing()
 
    def handle_incoming(self):
@@ -122,7 +115,40 @@ class Client:
          self.options[message.command](message)
 
    def handle_input(self, delta):
-      self.events.move(delta)
+      self.objects.step(delta)
+
+   def handle_animations(self, delta):
+      free = []
+      for sprite in self.sprites.animations:
+         anim = sprite.anim
+         if anim.start > -1 and self.clock.time > anim.start :
+            anim.time += delta
+            if anim.time > anim.rate:
+               anim.index += 1
+               if anim.index >= anim.max:
+                  self.handle_animation_loop(sprite)
+                  if anim.repeat:
+                     anim.index = 0
+                     anim.time = 0
+                     sprite.sprite.image = anim.images[anim.index]
+                  else:
+                     if anim.long:
+                        anim.start = -1
+                     else:
+                        self.handle_animation_end(sprite)
+                        free.append(sprite)
+               else:
+                  anim.time = 0
+                  sprite.sprite.image = anim.images[anim.index]
+
+      for sprite in free:
+         self.sprites.delete(sprite)
+
+   def handle_animation_loop(self, sprite):
+      pass
+
+   def handle_animation_end(self, sprite):
+      pass
 
    def handle_ping(self, message):
       return
@@ -135,6 +161,8 @@ class Client:
             x = int(message.args[1])
             y = int(message.args[2]) 
             self.objects.place(body, x, y)
+         else:
+            self.outgoing.append(f"{id}/{PLAYER_ACTOR_INFO}")
    
    def handle_new_actor(self, message):
       id = int(message.args[0])

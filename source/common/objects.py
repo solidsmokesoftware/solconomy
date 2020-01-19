@@ -1,12 +1,12 @@
 
-from source.pysics.manager import Manager
+from source.pysics.controller import Controller
 from source.pysics.vector import Vector
 from source.pysics.body import *
 from source.pysics.shape import *
 
 from source.common.world import World
 from source.common.constants import *
-import source.client.sprites as sprites
+import source.client.sprites as Sprites
 
 
 
@@ -15,14 +15,14 @@ class NetworkBody(Body):
       super().__init__(id, position, shape)
       self.value = 0
 
-   def add_info(self):
-      return f"{self.id}/{int(self.position.x)}/{int(self.position.y)}/{self.name}/{self.value}"
+   def pos_com(self):
+      return f"{self.id}/{self.position.x}/{self.position.y}/{PLAYER_POS}"
 
-   def delete_info(self):
-      return f"{self.id}"
+   def add_com(self):
+      return f"{self.id}/{self.position.x}/{self.position.y}/{self.name}/{PLAYER_POS}"
 
-   def pos_info(self):
-      return f"{self.id}/{int(self.position.x)}/{int(self.position.y)}"
+   def delete_com(self):
+      return f"{self.id}/{PLAYER_DELETE}"
 
 
 class NetworkStaticBody(StaticBody):
@@ -30,14 +30,14 @@ class NetworkStaticBody(StaticBody):
       super().__init__(id, position, shape)
       self.value = 0
 
-   def add_info(self):
-      return f"{self.id}/{int(self.position.x)}/{int(self.position.y)}/{self.name}/{self.value}"
+   def pos_com(self):
+      return f"{self.id}/{self.position.x}/{self.position.y}/{PLAYER_POS}"
 
-   def delete_info(self):
-      return f"{self.id}"
+   def add_com(self):
+      return f"{self.id}/{self.position.x}/{self.position.y}/{self.name}/{PLAYER_POS}"
 
-   def pos_info(self):
-      return f"{self.id}/#{int(self.position.x)}/{int(self.position.y)}"
+   def delete_com(self):
+      return f"{self.id}/{PLAYER_DELETE}"
 
 
 class Block(NetworkStaticBody):
@@ -63,10 +63,13 @@ class Item(NetworkStaticBody):
 
 class Actor(NetworkBody):
    def __init__(self, id, position, shape, host):
+      shape = Rect(32, 64)
       super().__init__(id, position, shape)
       self.host = host
+      self.speed = 300
       self.inventory = {}
       self.name = "actor"
+      self.moving = True
 
    def give(self, item):
       if item in self.inventory:
@@ -85,7 +88,7 @@ class Actor(NetworkBody):
       return results
 
 
-class Objects(Manager):
+class Objects(Controller):
    def __init__(self, size):
       super().__init__(size)
       self.updates = []
@@ -112,8 +115,8 @@ class Objects(Manager):
       self.add(body)
       return body
       
-   def on_zone(self, body):
-      new_tiles = self.world.build(body.zone)
+   def on_area(self, body):
+      new_tiles = self.world.build(body.area)
       if new_tiles:
          for data in new_tiles:
             x = data[0]
@@ -126,41 +129,64 @@ class Objects(Manager):
 
    def on_add(self, body):
       if body.name == "actor":
-         self.updates.append(f"{body.add_info()}/{SERVER_NEW_ACTOR}")
+         self.updates.append(f"{body.add_com()}/{SERVER_NEW_ACTOR}")
 
       elif body.name == "block":
-         self.updates.append(f"{body.add_info()}/{SERVER_NEW_ACTOR}")
+         self.updates.append(f"{body.add_com()}/{SERVER_NEW_ACTOR}")
 
    def on_delete(self, body):
-      self.updates.append(f"{body.delete_info()}/{SERVER_DEL_ACTOR}")
+      self.updates.append(f"{body.delete_com()}/{SERVER_DEL_ACTOR}")
 
-   def on_pos(self, body):
-      self.updates.append(f"{body.pos_info()}/{SERVER_POS}")
+   def on_motion(self, body):
+      self.updates.append(f"{body.pos_com()}/{SERVER_POS}")
 
 
 class ClientObjects(Objects):
    def __init__(self, size):
       super().__init__(size)
-      self.sprites = sprites
+      self.sprites = Sprites
 
    def on_add(self, body):
       if body.name == "tile":
-         body.sprite = sprites.make_tile(body.position.x, body.position.y, body.value)
+         body.sprite = self.sprites.make_tile(body.position.x, body.position.y, body.value)
 
       elif body.name == "block":
-         body.sprite = sprites.make_block(body.position.x, body.position.y, body.value)
+         body.sprite = self.sprites.make_block(body.position.x, body.position.y, body.value)
 
       elif body.name == "item":
-         body.sprite = sprites.make_item(body.position.x, body.position.y, body.value)
+         body.sprite = self.sprites.make_item(body.position.x, body.position.y, body.value)
 
       elif body.name == "actor":
-         body.sprite = sprites.make_actor(sprites.soul, body.position.x, body.position.y)
+         sprite = self.sprites.make_actor(self.sprites.eye_left_images[0], body.position.x, body.position.y)
+         sprite.anim = self.sprites.eye_left_anim
+         sprite.anims["dl"] = self.sprites.eye_left_anim
+         sprite.anims["dr"] = self.sprites.eye_right_anim
+         sprite.anims["ul"] = self.sprites.eye_back_anim
+         sprite.anims["ur"] = self.sprites.eye_back_anim
+         body.sprite = sprite
 
-   def on_pos(self, body):
+      if body.sprite.anim:
+         self.sprites.animations.append(body.sprite)
+
+   def on_motion(self, body):
       body.sprite.place(body.position.x, body.position.y)
+   
+   def on_turn(self, body):
+      if body.sprite.anim:
+         if body.direction.x == 1:
+            body.sprite.anim = body.sprite.anims["dr"]
 
-   def on_zone(self, body):
-      new_tiles = self.world.build(body.zone)
+         elif body.direction.x == -1:
+            body.sprite.anim = body.sprite.anims["dl"]
+
+         elif body.direction.y == 1:
+            body.sprite.anim = body.sprite.anims["ur"]
+
+         elif body.direction.y == -1:
+            body.sprite.anim = body.sprite.anims["dl"]
+
+   def on_area(self, body):
+      new_tiles = self.world.build(body.area)
       if new_tiles:
          for data in new_tiles:
             x = data[0]
@@ -168,6 +194,9 @@ class ClientObjects(Objects):
             self.make("tile", (x, y), x, y, data[2])
         
    def on_delete(self, body):
+      if body.sprite:
+         if body.sprite.anim:
+            self.sprites.animations.remove(body.sprite)
       body.sprite.delete()
 
 

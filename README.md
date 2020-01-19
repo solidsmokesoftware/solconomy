@@ -3,6 +3,8 @@
 # Solconomy
 A very incomplete "game" written in Python with [Pyglet](http://pyglet.org/). The main purpose of this is to serve as an example of using [pysics](https://github.com/solidsmokesoftware/pysics).
 
+1/18/2020 - Camera movement and block streaming is broken but animation works
+
 
 ## Features:
 
@@ -13,10 +15,10 @@ A very incomplete "game" written in Python with [Pyglet](http://pyglet.org/). Th
 * Object-oriented entity management system
 * Multi-threaded network layer
 * Spatial Hash for entity occlusion
+* 4-way animated movement
 
 #### Coming Soon:
 
-* Animations
 * Effect processing
 * UDP reliability layer
 

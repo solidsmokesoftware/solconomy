@@ -2,7 +2,7 @@
 ### Communication Protocol constants ###
 PLAYER_IDENT = "0"
 PLAYER_POS = "1"
-PLAYER_DEL_ACTOR = "2"
+PLAYER_DELETE = "2"
 PLAYER_MSG = "3"
 
 SERVER_IDENT = "50"
