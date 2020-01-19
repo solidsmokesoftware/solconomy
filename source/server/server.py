@@ -89,7 +89,7 @@ class Server:
    def handle_join(self, message):
       x = 0
       y = 0
-      actor = self.objects.make("actor", None, x, y, message.host)
+      actor = self.objects.make(ACTOR, None, x, y, message.host)
       string = f"{actor.id}/{int(actor.position.x)}/{int(actor.position.y)}/{self.objects.world.seed}/{SERVER_IDENT}"
       self.network.send(string, message.host)
       

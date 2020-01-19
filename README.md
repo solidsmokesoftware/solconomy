@@ -3,8 +3,9 @@
 # Solconomy
 A very incomplete "game" written in Python with [Pyglet](http://pyglet.org/). The main purpose of this is to serve as an example of using [pysics](https://github.com/solidsmokesoftware/pysics).
 
-1/18/2020 - Camera movement and block streaming is broken but animation works
+Currently the entire tilemap is being simulated by pysics. This is not a very efficent way of doing things but it show what the system can handle
 
+Animation is breaking, need to fix that
 
 ## Features:
 

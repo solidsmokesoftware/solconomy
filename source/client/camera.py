@@ -6,6 +6,7 @@ class Camera:
         self.x = 0
         self.y = 0
         self.scale = 1
+        self.actor = None
 
     def move(self, x, y):
         self.x = self.y + x
@@ -17,6 +18,7 @@ class Camera:
         glScalef(self.scale, self.scale, self.scale)
 
     def focus_on(self, actor):
+        self.actor = actor
         xo = actor.position.x - 300
         yo = actor.position.y - 300
         glTranslatef(-xo, -yo, 0)

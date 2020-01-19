@@ -10,6 +10,7 @@ class EventHandler:
       self.client = client
       self.outgoing = client.outgoing
       self.objects = client.objects
+      self.camera = client.objects.camera
       self.network = client.network
       self.clock = client.clock
       self.sprites = client.objects.sprites
@@ -17,7 +18,6 @@ class EventHandler:
       self.actor = None
       self.search_pos = Vector(0, 0)
       
-      self.camera = client.camera
       self.window = client.window
       self.batch = client.objects.sprites.batch
 
@@ -58,7 +58,7 @@ class EventHandler:
          for body in collisions:
             print(body.name)
             if body.name == "block":
-               string = f"{body.id}/{PLAYER_DEL_ACTOR}"
+               string = f"{body.id}/{PLAYER_DELETE}"
                self.objects.updates.append(string)
                self.objects.delete(body)
       

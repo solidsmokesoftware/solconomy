@@ -4,7 +4,6 @@ from threading import Thread
 
 
 import source.client.sprites as sprites
-from source.client.camera import Camera
 from source.client.events import EventHandler
 from source.common.network import Network
 from source.common.objects import ClientObjects
@@ -38,7 +37,6 @@ class Client:
       
       self.player = None
       self.actor = None
-      self.camera = Camera()
       self.events = EventHandler(self)
 
       self.options = {            
@@ -86,11 +84,11 @@ class Client:
       y = int(message.args[2])
       seed = int(message.args[3])
 
-      self.actor = self.objects.make("actor", id, x, y, message.host)
+      self.actor = self.objects.make(ACTOR, id, x, y, message.host)
    
       self.events.actor = self.actor
       self.player = message.host
-      self.camera.focus_on(self.actor)
+      self.objects.camera.focus_on(self.actor)
 
    def run_incoming(self):
       while self.running:
@@ -169,13 +167,13 @@ class Client:
       if id != self.actor.id:
          x = int(message.args[1])
          y = int(message.args[2])
-         kind = message.args[3].decode()
-         if kind == "actor":
+         key = int(message.args[3])
+         if key == ACTOR:
             value = message.host
-         elif kind == "block":
+            body = self.objects.make(key, id, x, y, value)
+         elif key == BLOCK:
             value = int(message.args[4])
-
-         body = self.objects.make(kind, id, x, y, value)
+            body = self.objects.make(key, id, x, y, value)
 
    def handle_del_actor(self, message):
       id = int(message.args[0])
