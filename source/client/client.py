@@ -5,11 +5,12 @@ from threading import Thread
 
 import source.client.sprites as sprites
 from source.client.events import EventHandler
-from source.common.network import Network
 from source.common.objects import ClientObjects
 from source.common.messenger import Messenger
 from source.common.constants import *
-from source.pysics.clock import SyncClock
+
+from renet import *
+from pecrs.clock import SyncClock
 
 
 
@@ -17,7 +18,6 @@ class Client:
    def __init__(self):
       self.clock = SyncClock()
       self.running = False
-      self.objects = ClientObjects(ZONE_SIZE)
 
       self.window = pyglet.window.Window(WINDOW_SIZE_X, WINDOW_SIZE_Y)
       self.batch = sprites.batch
@@ -37,10 +37,10 @@ class Client:
       
       self.player = None
       self.actor = None
-      self.events = EventHandler(self)
+      self.events = None
 
       self.options = {            
-         #SERVER_IDENT.encode(): self.handle_ident,
+         SERVER_IDENT.encode(): self.handle_ident,
          SERVER_POS.encode(): self.handle_pos,
          SERVER_PING.encode(): self.handle_ping,
          SERVER_NEW_ACTOR.encode(): self.handle_new_actor,
@@ -50,24 +50,21 @@ class Client:
    def start(self):
       print("Game: Starting")
       self.running = True
-      self.events.start()
 
       self.set_host("Player", "join", "localhost", 65535)
+      self.objects = ClientObjects(self.network, ZONE_SIZE)
+
+      self.events = EventHandler(self)
+      self.events.start()
 
       string = f"{self.username}/{self.password}/{PLAYER_IDENT}"
-      self.network.send_con(string)
-      message = self.network.recv()
-      self.handle_ident(message)
-      
+      self.network.connection.buffer(string, RELIABLE_I)
+      self.network.send(self.network.connection)
       self.run_network.start() #Thread that calls handle_incoming to run the network
+      
       pyglet.clock.schedule_interval(self.run, MSG_RATE)
       pyglet.app.run()
-
-   def update(self):
-      updates = self.outgoing
-      self.outgoing = []
-      return updates
-
+      
    def set_host(self, username, password, address, port):
       self.username = username
       self.password = password
@@ -75,10 +72,10 @@ class Client:
       self.port = port
       self.host = address, port
 
-      self.network = Network(address, port, self.clock)
+      self.network = Network(address, port)
 
    def handle_ident(self, message):
-      print(f"Game: Handle Ident")
+      print(f"Game: Handle Ident")      
       id = int(message.args[0])
       x = int(message.args[1])
       y = int(message.args[2])
@@ -93,8 +90,8 @@ class Client:
    def run_incoming(self):
       while self.running:
          #print("Game: Network handling incoming")
-         message = self.network.recv()
-         if message:
+         messages = self.network.recv()
+         for message in messages:
             #print("Game: income handler has messages")
             self.incoming.give(message)
          time.sleep(SMALL_NUMBER)
@@ -109,8 +106,8 @@ class Client:
    def handle_incoming(self):
       messages = self.incoming.get()
       for message in messages:
-         self.clock.time = message.time
-         self.options[message.command](message)
+         self.clock.time = message.index
+         self.options[message.args[-1]](message)
 
    def handle_input(self, delta):
       self.objects.step(delta)
@@ -182,14 +179,7 @@ class Client:
          self.objects.delete(body)      
 
    def handle_outgoing(self):
-      updates = self.update()
-      for string in self.outgoing:
-         self.network.send_con(string)
-         
-      updates = self.objects.update()
-      for string in updates:
-         self.network.send_con(string)
-
+      self.network.send(self.network.connection)
 
 
 

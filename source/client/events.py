@@ -2,7 +2,7 @@ import pyglet
 from pyglet.window import key
 from source.common.constants import *
 
-from source.pysics.vector import Vector
+from pecrs.vector import Vector
 
 
 class EventHandler:

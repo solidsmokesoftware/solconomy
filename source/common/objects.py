@@ -1,8 +1,10 @@
 
-from source.pysics.controller import Controller
-from source.pysics.vector import Vector
-from source.pysics.body import *
-from source.pysics.shape import *
+from pecrs.controller import Controller
+from pecrs.vector import Vector
+from pecrs.body import *
+from pecrs.shape import *
+
+from renet import *
 
 from source.common.world import World
 from source.common.constants import *
@@ -98,9 +100,9 @@ class Actor(NetworkBody):
 
 
 class Objects(Controller):
-   def __init__(self, size):
+   def __init__(self, network, size):
       super().__init__(size)
-      self.updates = []
+      self.network = network
       self.world = World()
 
       self.factory[TILE] = Tile
@@ -110,16 +112,11 @@ class Objects(Controller):
 
       self.tile_shape = Rect(32, 32)
 
-   def update(self):
-      updates = self.updates
-      self.updates = []
-      return updates
-
-   def make(self, kind, id, x, y, value):
+   def make(self, key, id, x, y, value):
       if not id:
-         id = self.index.get()
+         id = self.index.next()
       position = Vector(x, y)
-      body = self.factory[kind](id, position, self.tile_shape, value)
+      body = self.factory[key](id, position, self.tile_shape, value)
       self.on_make(body)
       self.add(body)
       return body
@@ -138,18 +135,18 @@ class Objects(Controller):
 
    def on_add(self, body):
       if body.key == ACTOR or body.key == BLOCK:
-         self.updates.append(f"{body.add_com()}/{SERVER_NEW_ACTOR}")
+         self.network.connection.buffer(f"{body.add_com()}/{SERVER_NEW_ACTOR}", RELIABLE_I)
 
    def on_delete(self, body):
-      self.updates.append(f"{body.delete_com()}/{SERVER_DEL_ACTOR}")
+      self.network.connection.buffer(f"{body.delete_com()}/{SERVER_DEL_ACTOR}", RELIABLE_I)
 
    def on_motion(self, body):
-      self.updates.append(f"{body.pos_com()}/{SERVER_POS}")
+      self.network.connection.buffer(f"{body.pos_com()}/{SERVER_POS}", UNRELIABLE_I)
 
 
 class ClientObjects(Objects):
-   def __init__(self, size):
-      super().__init__(size)
+   def __init__(self, network, size):
+      super().__init__(network, size)
       self.sprites = Sprites
       self.camera = Camera()
 
@@ -178,7 +175,7 @@ class ClientObjects(Objects):
    def on_move(self, body, distance):
       if self.camera.actor == body:
          self.camera.move(distance[0], distance[1])
-         self.updates.append(f"{body.pos_com()}/{PLAYER_POS}")
+         self.network.connection.buffer(f"{body.pos_com()}/{PLAYER_POS}", UNRELIABLE_I)
 
    def on_motion(self, body):
       body.sprite.place(body.position.x, body.position.y)

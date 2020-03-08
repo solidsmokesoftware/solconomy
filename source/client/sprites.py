@@ -1,7 +1,7 @@
 import pyglet
 from random import randint
 
-from source.pysics.index import Index
+from pecrs.index import Index
 from source.common.constants import *
 
 
@@ -63,10 +63,10 @@ def make_image(path):
 
 def make_sprite(image, x, y, group):
    #print("Sprites: Making sprite")
-   id = index.get()
+   id = index.next()
    pyg_sprite = pyglet.sprite.Sprite(image, x=x, y=y, batch=batch, group=group)
    sprite = Sprite(id, pyg_sprite)
-   list[id] = sprite
+   index.add(sprite, id)
    return sprite
 
 def make_animation(images, rate, start=0, repeat=False, long=False):

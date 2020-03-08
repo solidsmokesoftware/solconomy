@@ -3,10 +3,11 @@ import time
 import random
 from threading import Thread
 
-from source.pysics.clock import Clock
+from pecrs.clock import Clock
+from renet import *
+
 from source.common.objects import Objects
 from source.common.messenger import Messenger
-from source.common.network import Network
 from source.common.constants import *
 
 
@@ -17,13 +18,12 @@ class Server:
 
       self.network_runner = Thread(target=self.run_network)
 
-      self.network = Network(address, port, self.clock)
+      self.network = Network(address, port)
       self.password = password
       self.incoming = Messenger()
-      self.outgoing = []
 
       self.players = {}
-      self.objects = Objects(ZONE_SIZE)
+      self.objects = Objects(self.network, ZONE_SIZE)
 
       self.options = {
          PLAYER_POS.encode(): self.handle_pos,
@@ -44,64 +44,69 @@ class Server:
          if delta:
             self.run(delta)
          time.sleep(SMALL_NUMBER)
-
-   def update(self):
-      updates = self.outgoing
-      self.outgoing = []
-      return updates
       
    def run_network(self):
       while self.running:
-         message = self.network.recv()
-         if message:
+         messages = self.network.recv()
+         for message in messages:
             #print("Game: Run network got message")
             if message.host in self.players:
                #Passing the message off to the main thread
                #print("...sending to main thread")
                self.incoming.give(message)
 
-            elif message.command == PLAYER_IDENT.encode():
+            elif message.args[-1] == PLAYER_IDENT.encode():
                #print("...handling ident")
                self.handle_ident(message)
             else:
-               print("...invalid message")
+               print(f"Server: invalid message: {message.data} from {message.host}")
 
    def handle_ident(self, message):
       print(f"Game: Handling ident")
       password = message.args[1]
       if password == self.password:
          #print("Game: Player joined the server")
-         self.network.new_connection(message)
          self.handle_join(message)
       else:
          print("Game: Join refused, bad password")   
 
    def run(self, delta):
       self.handle_incoming()
-      self.handle_input(delta)
+      self.handle_run(delta)
       self.handle_outgoing()
 
    def handle_incoming(self):
       messages = self.incoming.get()
       for message in messages:
-         self.options[message.command](message)
+         self.options[message.args[-1]](message)
+
+   def handle_run(self, delta):
+      self.objects.step(delta)
+
+   def handle_outgoing(self):
+      self.network.resend_all()
+      self.network.send_all()
 
    def handle_join(self, message):
       x = 0
       y = 0
       actor = self.objects.make(ACTOR, None, x, y, message.host)
-      string = f"{actor.id}/{int(actor.position.x)}/{int(actor.position.y)}/{self.objects.world.seed}/{SERVER_IDENT}"
-      self.network.send(string, message.host)
+      ident_msg = f"{actor.id}/{int(actor.position.x)}/{int(actor.position.y)}/{self.objects.world.seed}/{SERVER_IDENT}"
+      connection = Connection(message.host[0], message.host[1])
+      self.network.connections[message.host] = connection
+
+      connection.buffer(ident_msg, RELIABLE_I)
+      self.network.send(connection)
       
+      add_msg = f"{actor.add_com()}/{SERVER_NEW_ACTOR}"
       for host in self.players:
-         actor = self.players[host]
-         string = f"{actor.add_com()}/{SERVER_NEW_ACTOR}"
-         self.outgoing.append((string, message.host))
-
+         other = self.players[host]
+         add_other_msg = f"{other.add_com()}/{SERVER_NEW_ACTOR}"
+         other_connection = self.network.connections[host]
+         other_connection.buffer(add_msg, RELIABLE_I)
+         connection.buffer(add_other_msg, RELIABLE_I)
+         
       self.players[message.host] = actor
-
-   def handle_input(self, delta):
-      self.objects.updates.append(f"{SERVER_PING}")
 
    def handle_pos(self, message):
       #print("Game: Moving Object")
@@ -118,13 +123,4 @@ class Server:
       if body:
          self.objects.delete(body)
 
-   def handle_outgoing(self):
-      self.network.resend()
-      updates = self.update()
-      for packet in updates:
-         self.network.send(packet[0], packet[1])
-
-      updates = self.objects.update()
-      for host in self.players:
-         for string in updates:
-            self.network.send(string, host)
+   
