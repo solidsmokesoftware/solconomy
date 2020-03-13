@@ -20,7 +20,6 @@ class Builder:
       self.seed = seed
       self.height_table.set_seed(seed)
       self.water_table.set_seed(seed+2)
-      self.danger_table.set_seed(seed+4)
       self.value_table.set_seed(seed+6)
       self.metal_table.set_seed(seed+8)
       self.mana_table.set_seed(seed+10)
@@ -33,8 +32,6 @@ class Builder:
       #print(f"Generating tile {x}:{y}")
         
       height = self.height_table.smooth_noise2(x, y, 5) - 2  # Base -2 - 3
-
-      danger = self.danger_table.scale_noise2(x, y)
       metal = self.metal_table.scale_noise2(x, y)
       value = self.value_table.scale_noise2(x, y)
       noise = self.noise_table.scale_noise2(x, y)
@@ -164,22 +161,20 @@ class World:
       self.builder = Builder()
       self.spatial = {}
 
-   def set_seed(self, seed):
+   def start(self, seed):
       self.seed = seed
       self.builder.set_seed(seed)
    
    def build(self, zone, scale=WORLD_SCALE):
-      x = zone[0]
-      y = zone[1]
-      #print(f"World: Generating chunk at {x}:{y} ({scale})")
       if zone in self.spatial:
          return False
       else:
+         #print(f"World: Generating chunk at {zone[0]}:{zone[1]} ({scale})")
          chunk = []
 
-         x_min = x * CHUNK_SIZE
+         x_min = zone[0] * CHUNK_SIZE
          x_max = x_min + CHUNK_SIZE
-         y_min = y * CHUNK_SIZE
+         y_min = zone[1] * CHUNK_SIZE
          y_max = y_min + CHUNK_SIZE
 
          for xi in range(x_min, x_max):
@@ -187,13 +182,14 @@ class World:
                tile = self.builder.get(xi, yi, scale)
                chunk.append(tile)
 
+         self.spatial[zone] = chunk
          return chunk
 
    def get(self, zone):
       if zone in self.spatial:
          return self.spatial[zone]
       else:
-         chunk = self.build(zone[0], zone[1])
+         chunk = self.build(zone)
          self.spatial[zone] = chunk
          return chunk
 

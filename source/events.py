@@ -15,11 +15,8 @@ class EventHandler:
       self.window = client.window
       self.batch = client.objects.sprites.batch
 
-      self.block = None
-      self.select = None
 
    def start(self):
-      print("Events: Starting")
       self.window.push_handlers(self.on_draw, self.on_key_press, self.on_key_release, self.on_mouse_press, self.on_mouse_release, self.on_mouse_motion)
       #pyglet.clock.schedule_interval(self.update, 1 / 30.0)
 
@@ -37,6 +34,8 @@ class EventHandler:
          self.objects.turn(self.actor, 0, -1)
       elif symbol == key.D:
          self.objects.turn(self.actor, 1, 0)
+      elif symbol == key.I:
+         print(self.actor.inventory)
       
    def on_key_release(self, symbol, modifiers):
       self.objects.stop_moving(self.actor)
@@ -49,7 +48,11 @@ class EventHandler:
          collisions = self.objects.collisions_at(xo, yo)
          for body in collisions:
             print(body.name)
-            if body.name == "block":
+            if body.key == BLOCK:
+               self.actor.give((body.key, body.value))
+               self.objects.delete(body)
+            elif body.key == ITEM:
+               self.actor.give((body.key, body.value))
                self.objects.delete(body)
       
       elif button == 4:

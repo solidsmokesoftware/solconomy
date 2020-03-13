@@ -17,17 +17,6 @@ class Animation:
       self.time = 0
       self.max = len(images)
 
-class Sprite(pyglet.sprite.Sprite):
-   def __init__(self, *args, **kwargs):
-      super().__init__(*args, **kwargs)
-      self.id = None
-      self.speed = 100
-      self.moving = True
-      self.direction = None
-      self.area = None
-
-index = Index()
-list = {}
 animations = []
 
 pyglet.resource.path = ['assets/chars', 'assets/tiles', 'assets/chars/eye']
@@ -50,17 +39,18 @@ def make_animation(images, rate, start=0, repeat=False, long=False):
 
 tile_images = []
 for i in range(TILE_COUNT):
-   image = pyglet.resource.image('tile-%s.png' % i)
+   image = pyglet.resource.image(f'tile-{i}.png')
    tile_images.append(image)
 
 block_images = []
 for i in range(BLOCK_COUNT):
-   image = pyglet.resource.image('block-%s.png' % i)
+   image = pyglet.resource.image(f'block-{i}.png')
    block_images.append(image)
 
-for i in range(BLOCK_COUNT, BLOCK_COUNT+BLOCK_ITEM_COUNT):
-   image = pyglet.resource.image('min-%s.png' % i)
-   block_images.append(image)
+block_item_images = []
+for i in range(BLOCK_ITEM_COUNT):
+   image = pyglet.resource.image(f'min-{i}.png')
+   block_item_images.append(image)
 
 blank_image = pyglet.resource.image('blank.png')
 red_circle = pyglet.resource.image('red-circle.png')

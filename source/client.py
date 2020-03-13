@@ -20,6 +20,8 @@ class Client:
       self.actor = None
       self.events = EventHandler(self)
 
+      self.time = 0
+
 
    def start(self):
       print("Game: Starting")
@@ -27,23 +29,15 @@ class Client:
       self.actor = self.objects.make_actor(0, 0)
       self.events.actor = self.actor
 
-      self.objects.world.set_seed(1955)
+      self.objects.start(1955)
+
       self.objects.camera.focus_on(self.actor)
 
       self.events.start()
-      pyglet.clock.schedule_interval(self.run, MSG_RATE)
+      pyglet.clock.schedule_interval(self.objects.step, MSG_RATE)
       pyglet.app.run()
+
       
-   def run(self, delta):
-      self.handle_input()
-      self.handle_run(delta)
-
-   def handle_input(self):
-      pass
-
-   def handle_run(self, delta):
-      self.objects.step(delta)
-
 
 
 
