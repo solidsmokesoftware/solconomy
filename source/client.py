@@ -29,7 +29,7 @@ class Client:
       self.actor = self.objects.make_actor(0, 0)
       self.events.actor = self.actor
 
-      self.objects.start(1955)
+      self.objects.start(SEED)
 
       self.objects.camera.focus_on(self.actor)
 

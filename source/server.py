@@ -34,7 +34,7 @@ class Server:
       print("Server: Starting")
       self.running = True
 
-      self.objects.world.set_seed(1955)
+      self.objects.world.set_seed(SEED)
 
       self.network.bind()
       self.network_runner.start()

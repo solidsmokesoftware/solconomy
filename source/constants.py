@@ -1,3 +1,4 @@
+from random import randint
 
 ### Communication Protocol constants ###
 PLAYER_IDENT = "0"
@@ -38,6 +39,7 @@ TILE_SIZE = 32  # Pixels
 CHUNK_SIZE = 8  # Tiles
 ZONE_SIZE = TILE_SIZE * CHUNK_SIZE
 SMALL_NUMBER = 0.0001
+SEED = randint(0, 9999)
 
 
 ### Input Constants ###
